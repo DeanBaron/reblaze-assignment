@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "nginx.fullname" . }}-service-monitor
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ include "nginx.fullname" . }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "nginx.fullname" . }}
+  endpoints:
+  - port: exporter
+    path: /metrics
+    scheme: http
+    tlsConfig:
+      insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+    - {{ .Values.namespace }}

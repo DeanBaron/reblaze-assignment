@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nginx.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+    app: {{ include "nginx.fullname" . }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nginx.selectorLabels" . | nindent 6 }}
+      app: {{ include "nginx.fullname" . }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nginx.selectorLabels" . | nindent 8 }}
+        app: {{ include "nginx.fullname" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: nginx-conf
+            mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+        - name: metrics-exporter
+          image: nginx/nginx-prometheus-exporter:0.10.0
+          command: ["nginx-prometheus-exporter"]
+          args: ["-nginx.scrape-uri=http://localhost:8080/stub_status"]
+          ports:
+            - name: exporter
+              containerPort: {{ .Values.service.metricsPort }}
+              protocol: TCP
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: {{ include "nginx.fullname" . }}-conf
+
+
+
